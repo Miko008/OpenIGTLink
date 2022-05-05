@@ -45,6 +45,7 @@ int ReceiveTrajectory(igtl::Socket * socket, igtl::MessageHeader::Pointer& heade
 int ReceiveString(igtl::Socket * socket, igtl::MessageHeader * header);
 int ReceiveBind(igtl::Socket * socket, igtl::MessageHeader * header);
 int ReceiveCapability(igtl::Socket * socket, igtl::MessageHeader * header);
+int SendPoint(igtl::Socket * socket, igtl::PointMessage::Pointer point);
 #endif //OpenIGTLink_PROTOCOL_VERSION >= 2
 
 int main(int argc, char* argv[])
@@ -146,6 +147,7 @@ int main(int argc, char* argv[])
         else if (strcmp(headerMsg->GetDeviceType(), "POINT") == 0)
           {
           ReceivePoint(socket, headerMsg);
+              
           }
         else if (strcmp(headerMsg->GetDeviceType(), "TRAJ") == 0)
           {
@@ -179,7 +181,46 @@ int main(int argc, char* argv[])
   // Close connection (The example code never reaches to this section ...)
   
   socket->CloseSocket();
+}
 
+int SendPoint(igtl::Socket * socket, igtl::PointMessage::Pointer receivedPoint)
+{
+    int nElements = receivedPoint->GetNumberOfPointElement();
+    
+    igtl::PointMessage::Pointer pointMsg;
+    pointMsg = igtl::PointMessage::New();
+    pointMsg->SetDeviceName("PointSender");
+    
+    for (int i = 0; i < nElements; i ++)
+    {
+        igtl::PointElement::Pointer pointElement;
+        pointMsg->GetPointElement(i, pointElement);
+        
+        igtlUint8 rgba[4];
+        pointElement->GetRGBA(rgba);
+        
+        igtlFloat32 pos[3];
+        pointElement->GetPosition(pos);
+        
+        
+        igtl::PointElement::Pointer point;
+        point = igtl::PointElement::New();
+        point->SetName("POINT_0");
+        point->SetGroupName("GROUP_0");
+        point->SetRGBA(rgba[0], rgba[1], rgba[2], rgba[3]);
+        point->SetPosition(-pos[0], -pos[1], -pos[2]);
+        point->SetRadius(15.0);
+        point->SetOwner("IMAGE_0");
+        
+        pointMsg->AddPointElement(point);
+    }
+    
+    pointMsg->Pack();
+    
+    //------------------------------------------------------------
+    // Send
+    socket->Send(pointMsg->GetPackPointer(), pointMsg->GetPackSize());
+    
 }
 
 
@@ -213,7 +254,6 @@ int ReceiveTransform(igtl::Socket * socket, igtl::MessageHeader * header)
   return 0;
 
 }
-
 
 int ReceivePosition(igtl::Socket * socket, igtl::MessageHeader * header)
 {
@@ -384,8 +424,10 @@ int ReceivePoint(igtl::Socket * socket, igtl::MessageHeader * header)
       std::cerr << " Owner     : " << pointElement->GetOwner() << std::endl;
       std::cerr << "================================" << std::endl;
       }
+        SendPoint(socket, &pointMsg);
     }
 
+    
   return 1;
 }
 
