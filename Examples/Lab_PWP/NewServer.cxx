@@ -183,46 +183,6 @@ int main(int argc, char* argv[])
   socket->CloseSocket();
 }
 
-int SendPoint(igtl::Socket * socket, igtl::PointMessage::Pointer receivedPoint)
-{
-    int nElements = receivedPoint->GetNumberOfPointElement();
-    
-    igtl::PointMessage::Pointer pointMsg;
-    pointMsg = igtl::PointMessage::New();
-    pointMsg->SetDeviceName("PointSender");
-    
-    for (int i = 0; i < nElements; i ++)
-    {
-        igtl::PointElement::Pointer pointElement;
-        pointMsg->GetPointElement(i, pointElement);
-        
-        igtlUint8 rgba[4];
-        pointElement->GetRGBA(rgba);
-        
-        igtlFloat32 pos[3];
-        pointElement->GetPosition(pos);
-        
-        
-        igtl::PointElement::Pointer point;
-        point = igtl::PointElement::New();
-        point->SetName("POINT_0");
-        point->SetGroupName("GROUP_0");
-        point->SetRGBA(rgba[0], rgba[1], rgba[2], rgba[3]);
-        point->SetPosition(-pos[0], -pos[1], -pos[2]);
-        point->SetRadius(15.0);
-        point->SetOwner("IMAGE_0");
-        
-        pointMsg->AddPointElement(point);
-    }
-    
-    pointMsg->Pack();
-    
-    //------------------------------------------------------------
-    // Send
-    socket->Send(pointMsg->GetPackPointer(), pointMsg->GetPackSize());
-    
-}
-
 
 int ReceiveTransform(igtl::Socket * socket, igtl::MessageHeader * header)
 {
@@ -401,11 +361,16 @@ int ReceivePoint(igtl::Socket * socket, igtl::MessageHeader * header)
   // If you want to skip CRC check, call Unpack() without argument.
   int c = pointMsg->Unpack(1);
 
+  igtl::PointMessage::Pointer sendpointMsg;
+  sendpointMsg = igtl::PointMessage::New();
+  sendpointMsg->SetDeviceName("PointSender");
+
   if (c & igtl::MessageHeader::UNPACK_BODY) // if CRC check is OK
-    {
+  	{
     int nElements = pointMsg->GetNumberOfPointElement();
+	
     for (int i = 0; i < nElements; i ++)
-      {
+    	{
       igtl::PointElement::Pointer pointElement;
       pointMsg->GetPointElement(i, pointElement);
 
@@ -423,10 +388,29 @@ int ReceivePoint(igtl::Socket * socket, igtl::MessageHeader * header)
       std::cerr << " Radius    : " << std::fixed << pointElement->GetRadius() << std::endl;
       std::cerr << " Owner     : " << pointElement->GetOwner() << std::endl;
       std::cerr << "================================" << std::endl;
-      }
-        SendPoint(socket, &pointMsg);
-    }
-
+      
+    
+	
+        igtl::PointElement::Pointer point;
+        point = igtl::PointElement::New();
+        point->SetName(pointElement->GetName());
+        point->SetGroupName(pointElement->GetGroupName());
+        point->SetRGBA(rgba[0], rgba[1], rgba[2], rgba[3]);
+        point->SetPosition(-pos[0], -pos[1], -pos[2]);
+        point->SetRadius(15.0);
+        point->SetOwner(pointElement->GetOwner());
+        
+        sendpointMsg->AddPointElement(point);
+    	}
+	}
+	
+    sendpointMsg->Pack();
+    
+    //------------------------------------------------------------
+    // Send
+    socket->Send(sendpointMsg->GetPackPointer(), sendpointMsg->GetPackSize());
+	std::cerr << "Packet Sent" << std::endl;
+	
     
   return 1;
 }

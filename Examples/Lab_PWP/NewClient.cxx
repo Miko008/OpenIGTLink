@@ -153,10 +153,7 @@ int ReceivePoint(igtl::Socket * socket, igtl::MessageHeader * header)
   igtl::PointMessage::Pointer pointMsg;
   pointMsg = igtl::PointMessage::New();
   pointMsg->SetMessageHeader(header);
-  std::cerr << "aaa" << std::endl;
   pointMsg->AllocatePack();
-
-  std::cerr << "bbb" << std::endl;
 
   // Receive transform data from the socket
   bool timeout(false);
